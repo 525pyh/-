@@ -112,6 +112,15 @@ void interrupt_handler(struct trapframe *tf) {
              *(3)当计数器加到100的时候，我们会输出一个`100ticks`表示我们触发了100次时钟中断，同时打印次数（num）加一
             * (4)判断打印次数，当打印次数为10时，调用<sbi.h>中的关机函数关机
             */
+            clock_set_next_event();//发生这次时钟中断的时候，我们要设置下一次时钟中断
+            if (++ticks % TICK_NUM == 0) {
+                print_ticks();
+                num++;
+                if (num == 10) {
+                   cprintf("Shutting down...\n");
+                   sbi_shutdown(); // 调用 SBI 关机函数
+                }
+            }
             break;
         case IRQ_H_TIMER:
             cprintf("Hypervisor software interrupt\n");
@@ -150,6 +159,10 @@ void exception_handler(struct trapframe *tf) {
              *(2)输出异常指令地址
              *(3)更新 tf->epc寄存器
             */
+            cprintf("Exception type:Illegal instruction \n");
+		    cprintf("Illegal instruction exception at 0x%016llx\n", tf->epc);//采用0x%016llx格式化字符串，用于打印16位十六进制数，这个位置是异常指令的地址,以tf->epc作为参数。
+		    //%016llx中的%表示格式化指示符的开始，0表示空位补零，16表示总宽度为 16 个字符，llx表示以长长整型十六进制数形式输出。
+		    tf->epc += 4;//指令长度都为4个字节
             break;
         case CAUSE_BREAKPOINT:
             //断点异常处理
@@ -158,6 +171,9 @@ void exception_handler(struct trapframe *tf) {
              *(2)输出异常指令地址
              *(3)更新 tf->epc寄存器
             */
+            cprintf("Exception type: breakpoint \n");
+		    cprintf("ebreak caught at 0x%016llx\n", tf->epc);
+		    tf->epc += 2;//ebreak指令长度为2个字节，为了4字节对齐
             break;
         case CAUSE_MISALIGNED_LOAD:
             break;
